@@ -19,10 +19,11 @@ jobs:
   run-bridge:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Camouflaged Xray Bridge
+      - name: Setup & Run Camouflaged Xray Bridge
         env:
           TARGET_IP: ${{ github.event.inputs.target_ip }}
           TARGET_PORT: ${{ github.event.inputs.target_port }}
+          DURATION: ${{ github.event.inputs.duration || '6h' }}
         run: |
           mkdir -p xray
           cat <<EOF > xray/config.json
@@ -94,16 +95,10 @@ jobs:
           }
           EOF
 
-          echo "Starting Camouflaged Bridge inside Docker..."
-          docker run -d --name xray-bridge --network host \
-            -v $(pwd)/xray:/etc/xray \
-            teddysun/xray xray run -c /etc/xray/config.json
+          echo "Downloading Xray v26.3.27 matching client..."
+          curl -sL https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-linux-64.zip -o xray.zip
+          unzip -q -o xray.zip -d xray-bin
+          chmod +x xray-bin/xray
 
-          sleep 2
-          docker logs xray-bridge
-          echo "Bridge initialized towards $TARGET_IP:$TARGET_PORT"
-
-      - name: Keep Alive & Stream Logs
-        run: |
-          docker logs -f xray-bridge &
-          sleep ${{ github.event.inputs.duration || '6h' }}
+          echo "Starting Bridge towards $TARGET_IP:$TARGET_PORT for duration: $DURATION"
+          timeout $DURATION ./xray-bin/xray run -c xray/config.json || true
