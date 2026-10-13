@@ -1,0 +1,13 @@
+.venv/*
+cert.pem
+client-config.json
+geoip.dat
+geosite.dat
+key.pem
+LICENSE-wintun.txt
+LICENSE
+wintun.dll
+xray_no_window.vbs
+xray_no_window.ps1
+xray.exe
+__pycache__/client_gui.cpython-311.pyc

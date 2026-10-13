@@ -22,7 +22,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       }
     },
     {
@@ -75,12 +78,17 @@
     "rules": [
       {
         "type": "field",
-        "inboundTag": ["portal-in"],
+        "inboundTag": [
+          "portal-in"
+        ],
         "outboundTag": "portal"
       },
       {
         "type": "field",
-        "inboundTag": ["socks-in", "http-in"],
+        "inboundTag": [
+          "socks-in",
+          "http-in"
+        ],
         "outboundTag": "portal"
       }
     ]
