@@ -113,6 +113,7 @@ jobs:
                 },
                 {
                   "type": "field",
+                  "domain": ["full:reverse.local"],
                   "outboundTag": "out-to-portal"
                 }
               ]
