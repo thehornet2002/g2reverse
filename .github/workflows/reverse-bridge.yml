@@ -97,9 +97,13 @@ jobs:
           echo "Starting Camouflaged Bridge inside Docker..."
           docker run -d --name xray-bridge --network host \
             -v $(pwd)/xray:/etc/xray \
-            teddysun/xray run -c /etc/xray/config.json
+            teddysun/xray xray run -c /etc/xray/config.json
 
+          sleep 2
+          docker logs xray-bridge
           echo "Bridge initialized towards $TARGET_IP:$TARGET_PORT"
 
-      - name: Keep Alive
-        run: sleep ${{ github.event.inputs.duration || '6h' }}
+      - name: Keep Alive & Stream Logs
+        run: |
+          docker logs -f xray-bridge &
+          sleep ${{ github.event.inputs.duration || '6h' }}
