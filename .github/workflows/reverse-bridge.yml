@@ -10,6 +10,9 @@ on:
         description: 'Your Forwarded Port (default 8443)'
         required: true
         default: '8443'
+      cert_sha256:
+        description: 'Certificate SHA256 (Optional, auto-detected if empty)'
+        required: false
       duration:
         description: 'Session Duration (max 6h)'
         required: false
@@ -24,8 +27,31 @@ jobs:
           TARGET_IP: ${{ github.event.inputs.target_ip }}
           TARGET_PORT: ${{ github.event.inputs.target_port }}
           DURATION: ${{ github.event.inputs.duration || '6h' }}
+          INPUT_SHA256: ${{ github.event.inputs.cert_sha256 }}
         run: |
           mkdir -p xray
+          PIN_SHA256="$INPUT_SHA256"
+
+          if [ -z "$PIN_SHA256" ]; then
+            echo "Attempting to auto-discover certificate fingerprint from $TARGET_IP:$TARGET_PORT..."
+            for i in {1..3}; do
+              openssl s_client -connect "$TARGET_IP:$TARGET_PORT" -servername api.github.com </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > xray/peer_cert.pem || true
+              if [ -s xray/peer_cert.pem ]; then
+                PIN_SHA256=$(openssl x509 -in xray/peer_cert.pem -outform DER 2>/dev/null | sha256sum | awk '{print $1}')
+                echo "Discovered pinned certificate SHA256: $PIN_SHA256"
+                break
+              fi
+              sleep 1
+            done
+          fi
+
+          if [ -n "$PIN_SHA256" ]; then
+            PIN_LINE=", \"pinnedPeerCertSha256\": \"$PIN_SHA256\""
+          else
+            echo "::warning::Could not auto-detect certificate. If handshake fails, provide cert_sha256 in workflow inputs."
+            PIN_LINE=""
+          fi
+
           cat <<EOF > xray/config.json
           {
             "log": {
@@ -66,8 +92,7 @@ jobs:
                   "network": "ws",
                   "security": "tls",
                   "tlsSettings": {
-                    "serverName": "api.github.com",
-                    "allowInsecure": true
+                    "serverName": "api.github.com"$PIN_LINE
                   },
                   "wsSettings": {
                     "path": "/api/v3/user/repos",

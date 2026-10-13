@@ -130,6 +130,20 @@ class XrayClientGUI(tk.Tk):
                 except Exception as ex:
                     self.log(f"خطا در ایجاد گواهی TLS: {ex}")
 
+    def get_cert_sha256(self):
+        cert_file = "cert.pem"
+        if not os.path.exists(cert_file):
+            return None
+        try:
+            import hashlib
+            from cryptography import x509
+            from cryptography.hazmat.primitives import serialization
+            with open(cert_file, "rb") as f:
+                cert = x509.load_pem_x509_certificate(f.read())
+            return hashlib.sha256(cert.public_bytes(serialization.Encoding.DER)).hexdigest()
+        except Exception:
+            return None
+
     def ensure_xray_binary(self):
         if os.path.exists(XRAY_BIN):
             return True
@@ -201,6 +215,9 @@ class XrayClientGUI(tk.Tk):
             self.btn_toggle.config(text="خاموش کردن کلاینت (Stop)")
             self.entry_port.config(state="disabled")
             self.entry_ip.config(state="disabled")
+            sha = self.get_cert_sha256()
+            if sha:
+                self.log(f"اثرانگشت گواهی (Cert SHA256):\n{sha}")
             self.log(f"پورتال فعال شد. حال در GitHub Actions این IP و پورت را وارد کرده و Run workflow را بزنید.")
 
             threading.Thread(target=self._read_logs, daemon=True).start()
