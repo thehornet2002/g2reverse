@@ -12,3 +12,5 @@ xray_no_window.ps1
 xray.exe
 __pycache__/client_gui.cpython-311.pyc
 test/
+.kilo/kilo.jsonc
+.kilo/kilo.jsonc
