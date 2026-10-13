@@ -108,13 +108,13 @@ jobs:
               "rules": [
                 {
                   "type": "field",
-                  "inboundTag": ["bridge"],
-                  "outboundTag": "out-to-internet"
+                  "domain": ["full:reverse.local"],
+                  "outboundTag": "out-to-portal"
                 },
                 {
                   "type": "field",
-                  "domain": ["full:reverse.local"],
-                  "outboundTag": "out-to-portal"
+                  "inboundTag": ["bridge"],
+                  "outboundTag": "out-to-internet"
                 }
               ]
             }
