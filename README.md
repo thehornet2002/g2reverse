@@ -1,97 +1,106 @@
 # g2reverse
 
-تونل معکوس امن (Reverse Proxy Tunnel) با هسته **Xray** و بستر **GitHub Actions**؛ بدون نیاز به VPS یا سرور اختصاصی خارجی.
+A secure, camouflaged reverse proxy tunnel powered by **Xray-core** (VLESS WebSocket + TLS) and **GitHub Actions**, bypassing network restrictions without requiring a dedicated external VPS.
 
 ---
 
-## نحوه کارکرد (معماری سیستم)
+## Architecture & How It Works
 
-این پروژه از قابلیت Reverse Proxy هسته Xray استفاده می‌کند:
-
-1. **سمت کلاینت (پورتال محلی - ایران):**
-   - برنامه گرافیکی (`client_gui.py`) پورتال Xray را روی یک پورت دلخواه (پیش‌فرض: `8443`) به صورت گوش‌به‌زنگ اجرا می‌کند.
-   - ترافیک ورودی تحت پروتکل `VLESS` بر بستر `WebSocket + TLS` با استتار ترافیک رسمی گیت‌هاب (`api.github.com`) محافظت می‌شود.
-   - هم‌زمان دو پورت محلی برای اتصال شما باز می‌شود:
+1. **Client / Portal (Your machine or local server):**
+   - Runs an Xray Reverse Portal listening on your chosen forwarded port (e.g. `8443`).
+   - Inbound traffic is encapsulated in `VLESS` over `WebSocket + TLS` with domain camouflage (e.g., `api.github.com`).
+   - Opens local proxy endpoints for your browser and applications:
      - **SOCKS5:** `127.0.0.1:10808`
      - **HTTP:** `127.0.0.1:10809`
 
-2. **سمت سرور (پل ارتباطی - GitHub Actions):**
-   - اکشن گیت‌هاب رانر اوبونتو را بالا آورده و به IP عمومی و پورت فوروارد شده سیستم شما در ایران وصل می‌شود.
-   - با برقراری این اتصال معکوس، اینترنت آزاد رانر گیت‌هاب از طریق پورتال محلی در دسترس سیستم شما قرار می‌گیرد.
+2. **Server / Bridge (GitHub Actions runner):**
+   - An ephemeral Ubuntu runner connects outbound to your public IP and forwarded port.
+   - The reverse bridge channels unhindered internet back through the established tunnel to your local proxy ports.
 
 ---
 
-## پیش‌نیازها
+## Prerequisites
 
-- **اینترنت ثابت (ADSL / VDSL / فیبر نوری):** نیازمند اتصال با IP استاتیک یا داینامیک پابلیک (اینترنت‌های سیم‌کارت و موبایل به دلیل CGNAT بدون پورت‌فوروارد مستقیم کار نمی‌کنند).
-- **پورت‌فورواردینگ (Port Forwarding):** دسترسی به پنل مودم برای فوروارد کردن پورت به سیستم.
-- **پایتون ۳.۱۰ به بالا** به همراه پکیج `cryptography`.
+- **Fixed/Broadband Internet:** A connection capable of port forwarding (Fiber, VDSL, ADSL). Mobile/cellular connections behind Carrier-Grade NAT (CGNAT) require a static/public IP from your ISP.
+- **Port Forwarding:** Forward an external TCP port (e.g. `8443`) in your router settings to your host machine.
 
 ---
 
-## راهنمای راه‌اندازی گام به گام
+## Quick Start
 
-### ۱. تنظیم Port Forwarding در مودم
-1. وارد پنل تنظیمات مودم شوید (معمولاً `192.168.1.1`).
-2. به بخش **Port Forwarding** / **Virtual Server** بروید.
-3. یک رول جدید بسازید:
-   - **Internal IP:** آی‌پی محلی سیستم شما (مثلاً `192.168.1.100`)
-   - **External & Internal Port:** پورت دلخواه (مثلاً `8443`)
+### 1. Router Port Forwarding
+1. Access your router admin dashboard (typically `192.168.1.1`).
+2. Navigate to **Port Forwarding** / **Virtual Server**.
+3. Create a rule:
+   - **Internal IP:** Your machine's local IP (e.g., `192.168.1.100`)
+   - **External & Internal Port:** `8443` (or any custom port)
    - **Protocol:** `TCP`
 
-### ۲. اجرای کلاینت (GUI)
-1. پیش‌نیازهای پایتون را نصب کنید:
+---
+
+### 2. Run the Client
+
+#### Option A: Windows / Desktop (GUI)
+1. Install dependencies and run:
    ```bash
    pip install cryptography
-   ```
-2. کلاینت را اجرا کنید:
-   ```bash
    python client_gui.py
    ```
-3. در رابط کاربری:
-   - نرم‌افزار به طور خودکار هسته Xray را آماده کرده و گواهی TLS خودامضا ایجاد می‌کند.
-   - **Public IP:** آی‌پی عمومی اینترنت خود را وارد کنید (می‌توانید از سایت‌هایی مثل `ipinfo.io` بررسی کنید).
-   - **Forwarded Port:** پورتی که در مودم فوروارد کردید (مثلاً `8443`).
-   - دکمه **شروع کلاینت (Start)** را بزنید تا وضعیت پورتال فعال شود.
+2. Enter your **Public IP** and **Forwarded Port**.
+3. Click **Start Portal**.
+4. Click **Copy SHA256** to copy the certificate fingerprint for GitHub Actions.
 
-### ۳. اجرای گردش‌کار در GitHub Actions
-1. این ریپازیتوری را روی اکانت گیت‌هاب خود به صورت Private یا Public فورک یا پوش کنید.
-2. به تب **Actions** بروید و گردش‌کار **Xray Reverse Bridge (Camouflaged)** را انتخاب کنید.
-3. روی **Run workflow** کلیک کرده و ورودی‌ها را پر کنید:
-   - **Your Public IP:** همان آی‌پی عمومی سیستم شما.
-   - **Your Forwarded Port:** پورت فوروارد شده (مثلاً `8443`).
-   - **Session Duration:** مدت‌زمان فعال ماندن تونل (حداکثر تا `6h`).
-4. دکمه سبز رنگ **Run workflow** را بزنید.
-
-### ۴. اتصال به اینترنت آزاد
-پس از سبز شدن وضعیت جاب در GitHub Actions، پراکسی سیستم، مرورگر یا نرم‌افزارهای خود را تنظیم کنید:
-
-- **نوع:** `SOCKS5`
-- **آدرس:** `127.0.0.1`
-- **پورت:** `10808`
-
-یا برای پراکسی HTTP:
-- **نوع:** `HTTP`
-- **آدرس:** `127.0.0.1`
-- **پورت:** `10809`
+#### Option B: Linux Server (Systemd Service)
+Run the self-contained script to install and launch as a managed service:
+```bash
+chmod +x server.sh
+sudo ./server.sh --port 8443
+```
+- **Service Status & Parameters:** `sudo ./server.sh status`
+- **Live Logs:** `sudo ./server.sh logs`
+- **Restart Service:** `sudo ./server.sh restart`
+- **Stop Service:** `sudo ./server.sh stop`
 
 ---
 
-## ساختار فایل‌های پروژه
+### 3. Launch GitHub Actions Workflow
 
-| فایل | توضیحات |
+1. Fork or push this repository to your personal GitHub account (Private repository recommended).
+2. Go to the **Actions** tab and select **Xray Reverse Bridge (Camouflaged)**.
+3. Click **Run workflow** and provide:
+   - **Your Public IP:** Your router/server public IP address.
+   - **Your Forwarded Port:** Forwarded port (default `8443`).
+   - **Certificate SHA256:** Copied from the client (optional; auto-detected if reachable).
+   - **SNI / Host:** Camouflage domain (default `api.github.com`).
+   - **WebSocket Path:** WebSocket endpoint path (default `/api/v3/user/repos`).
+   - **Session Duration:** Runner lifetime (up to `6h`).
+4. Click the green **Run workflow** button.
+
+---
+
+### 4. Connect to the Free Web
+
+Once the GitHub Action status turns green, configure your proxy client (browser, Telegram, system proxy):
+
+- **SOCKS5:** `127.0.0.1:10808`
+- **HTTP:** `127.0.0.1:10809`
+
+---
+
+## File Overview
+
+| File | Description |
 |---|---|
-| `client_gui.py` | کلاینت رابط کاربری پایتون (مدیریت پورتال، گواهی‌ها، و لاگ) |
-| `client-config.json` | کانفیگ پورتال هسته Xray سمت سیستم کاربر |
-| `.github/workflows/reverse-bridge.yml` | اسکریپت گردش‌کار سمت گیت‌هاب (Bridge داخل داکر) |
-| `cert.pem` / `key.pem` | گواهی و کلید TLS خودامضا برای استتار ترافیک |
+| `client_gui.py` | Desktop GUI client (Tkinter) with certificate management and live logging |
+| `server.sh` | Self-contained Linux systemd service installer and manager |
+| `.github/workflows/reverse-bridge.yml` | GitHub Actions reverse bridge workflow |
+| `client-config.json` | Generated Xray portal configuration |
+| `cert.pem` / `key.pem` | Self-signed TLS certificate and private key |
 
 ---
 
-## عیب‌یابی و نکات مهم
+## Security Notes
 
-- **خطای اتصال در GitHub Actions:**
-  - از باز بودن پورت روی مودم با ابزارهای آنلاین (مثل `canyouseeme.org`) اطمینان حاصل کنید.
-  - مطمئن شوید فایروال ویندوز جلوی پورت یا فایل `xray.exe` را نگرفته است.
-- **اینترنت‌های پشت CGNAT:** اگر آی‌پی WAN مودم شما در بازه `100.64.0.0/10` باشد، سرویس‌دهنده شما از CGNAT استفاده می‌کند و پورت فورواردینگ مستقیم کار نخواهد کرد (باید از پشتیبانی ISP درخواست IP استاتیک / Valid نمایید).
-- **محدودیت زمانی:** رانرهای رایگان GitHub Actions حداکثر ۶ ساعت به ازای هر اجرا روشن می‌مانند؛ در صورت نیاز مجدداً گردش‌کار را اجرا کنید.
+- **Private Repository:** Keep your repository private so that your VLESS credentials and parameters remain confidential.
+- **Certificate Pinning:** The workflow uses `pinnedPeerCertSha256` to authenticate the self-signed certificate against man-in-the-middle tampering.
+- **Fair Use:** Free GitHub Actions runners have a maximum duration of 6 hours per job. Re-trigger the workflow when needed.

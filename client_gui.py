@@ -22,7 +22,7 @@ class XrayClientGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("g2reverse - Secure Client Portal")
-        self.geometry("530x620")
+        self.geometry("540x630")
         self.resizable(False, False)
 
         self.process = None
@@ -34,13 +34,13 @@ class XrayClientGUI(tk.Tk):
         pad = {'padx': 10, 'pady': 3}
 
         # Public IP & Forwarded Port Section
-        frame_ip = ttk.LabelFrame(self, text="تنظیمات اتصال سرور/مودم (Public Endpoint)")
+        frame_ip = ttk.LabelFrame(self, text="Connection Endpoint Settings")
         frame_ip.pack(fill="x", **pad)
 
         ttk.Label(frame_ip, text="Public IP:").grid(row=0, column=0, sticky="w", **pad)
         self.entry_ip = ttk.Entry(frame_ip, width=22)
         self.entry_ip.grid(row=0, column=1, sticky="w", **pad)
-        ttk.Button(frame_ip, text="کپی IP", command=self.copy_ip).grid(row=0, column=2, **pad)
+        ttk.Button(frame_ip, text="Copy IP", command=self.copy_ip).grid(row=0, column=2, **pad)
 
         ttk.Label(frame_ip, text="Forwarded Port:").grid(row=1, column=0, sticky="w", **pad)
         self.entry_port = ttk.Entry(frame_ip, width=12)
@@ -48,29 +48,29 @@ class XrayClientGUI(tk.Tk):
         self.entry_port.grid(row=1, column=1, sticky="w", **pad)
 
         # Cert Fingerprint Section
-        frame_cert = ttk.LabelFrame(self, text="اثرانگشت گواهی (Cert SHA256 برای GitHub Actions)")
+        frame_cert = ttk.LabelFrame(self, text="Certificate Fingerprint (SHA256 for GitHub Actions)")
         frame_cert.pack(fill="x", **pad)
 
-        self.entry_sha = ttk.Entry(frame_cert, width=38)
+        self.entry_sha = ttk.Entry(frame_cert, width=40)
         self.entry_sha.grid(row=0, column=0, sticky="w", **pad)
-        ttk.Button(frame_cert, text="کپی SHA256", command=self.copy_sha).grid(row=0, column=1, **pad)
+        ttk.Button(frame_cert, text="Copy SHA256", command=self.copy_sha).grid(row=0, column=1, **pad)
 
         # Camouflage Section (SNI & Path)
-        frame_camou = ttk.LabelFrame(self, text="پوشش و امنیت (Camouflage & TLS Settings)")
+        frame_camou = ttk.LabelFrame(self, text="Camouflage & TLS Settings")
         frame_camou.pack(fill="x", **pad)
 
         ttk.Label(frame_camou, text="SNI / Host:").grid(row=0, column=0, sticky="w", **pad)
-        self.entry_sni = ttk.Entry(frame_camou, width=28)
+        self.entry_sni = ttk.Entry(frame_camou, width=30)
         self.entry_sni.insert(0, "api.github.com")
         self.entry_sni.grid(row=0, column=1, sticky="w", **pad)
 
         ttk.Label(frame_camou, text="WS Path:").grid(row=1, column=0, sticky="w", **pad)
-        self.entry_path = ttk.Entry(frame_camou, width=28)
+        self.entry_path = ttk.Entry(frame_camou, width=30)
         self.entry_path.insert(0, "/api/v3/user/repos")
         self.entry_path.grid(row=1, column=1, sticky="w", **pad)
 
         # Local Proxy Ports Section
-        frame_local = ttk.LabelFrame(self, text="پروکسی‌های محلی برای مرورگر و برنامه‌ها")
+        frame_local = ttk.LabelFrame(self, text="Local Proxy Ports (Browser / Apps)")
         frame_local.pack(fill="x", **pad)
 
         ttk.Label(frame_local, text="SOCKS5 Port:").grid(row=0, column=0, sticky="w", **pad)
@@ -87,11 +87,11 @@ class XrayClientGUI(tk.Tk):
         frame_ctrl = ttk.Frame(self)
         frame_ctrl.pack(fill="x", **pad)
 
-        self.btn_toggle = ttk.Button(frame_ctrl, text="شروع کلاینت (Start)", command=self.toggle_service)
+        self.btn_toggle = ttk.Button(frame_ctrl, text="Start Portal", command=self.toggle_service)
         self.btn_toggle.pack(side="left", expand=True, fill="x", padx=5, pady=4)
 
         # Log Box
-        frame_log = ttk.LabelFrame(self, text="لاگ وضعیت")
+        frame_log = ttk.LabelFrame(self, text="Activity Log")
         frame_log.pack(fill="both", expand=True, **pad)
 
         self.log_text = tk.Text(frame_log, height=7, wrap="word", bg="#1e1e1e", fg="#00ff00", insertbackground="white")
@@ -108,11 +108,11 @@ class XrayClientGUI(tk.Tk):
                 self.clipboard_clear()
                 self.clipboard_append(ip)
                 self.update()
-                self.log(f"آی‌پی {ip} کپی شد.")
+                self.log(f"Public IP copied: {ip}")
             except Exception as e:
-                self.log(f"خطا در کپی آی‌پی: {e}")
+                self.log(f"Clipboard error: {e}")
         else:
-            messagebox.showwarning("هشدار", "ابتدا آی‌پی را در کادر وارد کنید.")
+            messagebox.showwarning("Warning", "Please enter your Public IP first.")
 
     def copy_sha(self):
         sha = self.get_cert_sha256()
@@ -128,11 +128,11 @@ class XrayClientGUI(tk.Tk):
                 self.clipboard_clear()
                 self.clipboard_append(sha)
                 self.update()
-                self.log("کد SHA256 در کلیپ‌بورد کپی شد.")
+                self.log("Certificate SHA256 copied to clipboard.")
             except Exception as e:
-                self.log(f"کد SHA256: {sha}")
+                self.log(f"Cert SHA256: {sha}")
         else:
-            messagebox.showerror("خطا", "فایل گواهی یافت نشد.")
+            messagebox.showerror("Error", "Certificate file not found.")
 
     def get_cert_sha256(self):
         if not os.path.exists(CERT_FILE):
@@ -143,13 +143,12 @@ class XrayClientGUI(tk.Tk):
             der = ssl.PEM_cert_to_DER_cert(pem)
             return hashlib.sha256(der).hexdigest()
         except Exception as e:
-            self.log(f"خطا در خواندن اثرانگشت گواهی: {e}")
+            self.log(f"Error reading certificate fingerprint: {e}")
             return ""
 
     def generate_certificates(self, sni="api.github.com", force=False):
         if force or not os.path.exists(CERT_FILE) or not os.path.exists(KEY_FILE):
-            self.log(f"در حال تولید گواهی TLS برای {sni}...")
-            # Try OpenSSL first
+            self.log(f"Generating self-signed TLS certificate for {sni}...")
             created = False
             try:
                 cmd = [
@@ -159,7 +158,7 @@ class XrayClientGUI(tk.Tk):
                 ]
                 subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
                 created = True
-                self.log("گواهی TLS با openssl ایجاد شد.")
+                self.log("TLS certificate created using openssl.")
             except Exception:
                 pass
 
@@ -194,9 +193,9 @@ class XrayClientGUI(tk.Tk):
                     with open(CERT_FILE, "wb") as f:
                         f.write(cert.public_bytes(serialization.Encoding.PEM))
                     created = True
-                    self.log("گواهی TLS با cryptography ایجاد شد.")
+                    self.log("TLS certificate created using cryptography.")
                 except Exception as ex:
-                    self.log(f"خطا در ایجاد گواهی: {ex}")
+                    self.log(f"Error generating certificate: {ex}")
 
         sha = self.get_cert_sha256()
         if sha:
@@ -206,7 +205,7 @@ class XrayClientGUI(tk.Tk):
     def ensure_xray_binary(self):
         if os.path.exists(XRAY_BIN):
             return True
-        self.log("در حال دانلود هسته Xray...")
+        self.log("Downloading Xray-core binary...")
         try:
             zip_path = os.path.join(BASE_DIR, "xray.zip")
             ctx = ssl._create_unverified_context()
@@ -218,11 +217,11 @@ class XrayClientGUI(tk.Tk):
                         zip_ref.extract(member, BASE_DIR)
             if os.path.exists(zip_path):
                 os.remove(zip_path)
-            self.log("دانلود هسته Xray کامل شد.")
+            self.log("Xray-core download completed.")
             return True
         except Exception as e:
-            self.log(f"خطا در دانلود خودکار: {e}")
-            messagebox.showerror("خطا", "دانلود xray.exe ناموفق بود.\nفایل xray.exe را دستی کنار برنامه قرار دهید.")
+            self.log(f"Download failed: {e}")
+            messagebox.showerror("Error", "Failed to download xray.exe.\nPlease place xray.exe in the application folder manually.")
             return False
 
     def generate_config(self, port, socks_port, http_port, sni, path):
@@ -333,12 +332,12 @@ class XrayClientGUI(tk.Tk):
         path = self.entry_path.get().strip() or "/api/v3/user/repos"
 
         if not ip:
-            messagebox.showerror("خطا", "لطفاً Public IP را وارد کنید.")
+            messagebox.showerror("Error", "Please enter your Public IP.")
             return
 
         for p_name, p_val in [("Forwarded Port", port), ("SOCKS5 Port", socks_port), ("HTTP Port", http_port)]:
             if not p_val.isdigit():
-                messagebox.showerror("خطا", f"پورت {p_name} باید یک عدد معتبر باشد.")
+                messagebox.showerror("Error", f"{p_name} must be a valid number.")
                 return
 
         if not path.startswith("/"):
@@ -359,15 +358,15 @@ class XrayClientGUI(tk.Tk):
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             )
 
-            self.btn_toggle.config(text="خاموش کردن کلاینت (Stop)")
+            self.btn_toggle.config(text="Stop Portal")
             for entry in (self.entry_port, self.entry_ip, self.entry_socks, self.entry_http, self.entry_sni, self.entry_path):
                 entry.config(state="disabled")
 
             sha = self.get_cert_sha256()
 
             self.log("=" * 45)
-            self.log("پورتال با موفقیت فعال شد.")
-            self.log("مقادیر برای اجرای GitHub Actions:")
+            self.log("Portal successfully started.")
+            self.log("Parameters for GitHub Actions:")
             self.log(f"• Your Public IP:       {ip}")
             self.log(f"• Your Forwarded Port:  {port}")
             if sha:
@@ -375,7 +374,7 @@ class XrayClientGUI(tk.Tk):
             self.log(f"• SNI / Host:           {sni}")
             self.log(f"• WebSocket Path:       {path}")
             self.log("-" * 45)
-            self.log(f"پروکسی‌های محلی:")
+            self.log("Local Proxies:")
             self.log(f"• SOCKS5: 127.0.0.1:{socks_port}")
             self.log(f"• HTTP:   127.0.0.1:{http_port}")
             self.log("=" * 45)
@@ -383,7 +382,7 @@ class XrayClientGUI(tk.Tk):
             threading.Thread(target=self._read_logs, daemon=True).start()
 
         except Exception as e:
-            self.log(f"خطا در اجرا: {e}")
+            self.log(f"Failed to start: {e}")
             self.process = None
 
     def _read_logs(self):
@@ -396,10 +395,10 @@ class XrayClientGUI(tk.Tk):
         if self.process:
             self.process.terminate()
             self.process = None
-            self.btn_toggle.config(text="شروع کلاینت (Start)")
+            self.btn_toggle.config(text="Start Portal")
             for entry in (self.entry_port, self.entry_ip, self.entry_socks, self.entry_http, self.entry_sni, self.entry_path):
                 entry.config(state="normal")
-            self.log("کلاینت متوقف شد.")
+            self.log("Portal stopped.")
 
 if __name__ == "__main__":
     app = XrayClientGUI()
