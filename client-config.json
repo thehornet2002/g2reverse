@@ -54,8 +54,8 @@
         "tlsSettings": {
           "certificates": [
             {
-              "certificateFile": "cert.pem",
-              "keyFile": "key.pem"
+              "certificateFile": "d:\\Projects\\g2reverse\\cert.pem",
+              "keyFile": "d:\\Projects\\g2reverse\\key.pem"
             }
           ]
         },

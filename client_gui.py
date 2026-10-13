@@ -12,12 +12,13 @@ from tkinter import ttk, messagebox
 CONFIG_FILE = "client-config.json"
 XRAY_BIN = "xray.exe" if sys.platform == "win32" else "xray"
 XRAY_ZIP_URL = "https://github.com/XTLS/Xray-core/releases/download/v26.3.27/Xray-windows-64.zip"
+UUID = "e7b99c43-4dc9-408a-b852-7b5638a16db8"
 
 class XrayClientGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("g2reverse - Secure Client Portal")
-        self.geometry("480x470")
+        self.geometry("520x540")
         self.resizable(False, False)
 
         self.process = None
@@ -26,7 +27,7 @@ class XrayClientGUI(tk.Tk):
         self.generate_certificates()
 
     def _build_ui(self):
-        pad = {'padx': 10, 'pady': 5}
+        pad = {'padx': 10, 'pady': 4}
 
         # Public IP Section (Manual input)
         frame_ip = ttk.LabelFrame(self, text="تنظیمات اتصال (اینترنت مخابرات / ثابت)")
@@ -44,17 +45,25 @@ class XrayClientGUI(tk.Tk):
         self.entry_port.insert(0, "8443")
         self.entry_port.grid(row=1, column=1, sticky="w", **pad)
 
+        # Cert Fingerprint Section
+        frame_cert = ttk.LabelFrame(self, text="اثرانگشت گواهی (Cert SHA256 برای GitHub Actions)")
+        frame_cert.pack(fill="x", **pad)
+
+        self.entry_sha = ttk.Entry(frame_cert, width=38)
+        self.entry_sha.grid(row=0, column=0, sticky="w", **pad)
+        ttk.Button(frame_cert, text="کپی SHA256", command=self.copy_sha).grid(row=0, column=1, **pad)
+
         # Camouflage Info
         frame_camou = ttk.LabelFrame(self, text="پوشش و امنیت (GitHub Camouflage & TLS)")
         frame_camou.pack(fill="x", **pad)
-        ttk.Label(frame_camou, text="SNI / Host: api.github.com", foreground="gray").pack(anchor="w", padx=10, pady=2)
-        ttk.Label(frame_camou, text="Path: /api/v3/user/repos (WebSocket + TLS)", foreground="gray").pack(anchor="w", padx=10, pady=2)
+        ttk.Label(frame_camou, text="SNI / Host: api.github.com", foreground="gray").pack(anchor="w", padx=10, pady=1)
+        ttk.Label(frame_camou, text="Path: /api/v3/user/repos (WebSocket + TLS)", foreground="gray").pack(anchor="w", padx=10, pady=1)
 
         # Local Proxy Info
         frame_local = ttk.LabelFrame(self, text="پروکسی‌های محلی برای مرورگر و برنامه‌ها")
         frame_local.pack(fill="x", **pad)
-        ttk.Label(frame_local, text="SOCKS5: 127.0.0.1:10808").pack(anchor="w", padx=10, pady=2)
-        ttk.Label(frame_local, text="HTTP:   127.0.0.1:10809").pack(anchor="w", padx=10, pady=2)
+        ttk.Label(frame_local, text="SOCKS5: 127.0.0.1:10808").pack(anchor="w", padx=10, pady=1)
+        ttk.Label(frame_local, text="HTTP:   127.0.0.1:10809").pack(anchor="w", padx=10, pady=1)
 
         # Controls
         frame_ctrl = ttk.Frame(self)
@@ -82,6 +91,15 @@ class XrayClientGUI(tk.Tk):
             self.log(f"آی‌پی {ip} کپی شد.")
         else:
             messagebox.showwarning("هشدار", "ابتدا آی‌پی را در کادر وارد کنید.")
+
+    def copy_sha(self):
+        sha = self.entry_sha.get().strip()
+        if sha:
+            self.clipboard_clear()
+            self.clipboard_append(sha)
+            self.log("کد SHA256 در کلیپ‌بورد کپی شد.")
+        else:
+            messagebox.showwarning("هشدار", "کد SHA256 هنوز تولید نشده است.")
 
     def generate_certificates(self):
         cert_file = "cert.pem"
@@ -130,6 +148,11 @@ class XrayClientGUI(tk.Tk):
                 except Exception as ex:
                     self.log(f"خطا در ایجاد گواهی TLS: {ex}")
 
+        sha = self.get_cert_sha256()
+        if sha:
+            self.entry_sha.delete(0, "end")
+            self.entry_sha.insert(0, sha)
+
     def get_cert_sha256(self):
         cert_file = "cert.pem"
         if not os.path.exists(cert_file):
@@ -164,20 +187,102 @@ class XrayClientGUI(tk.Tk):
             messagebox.showerror("خطا", "دانلود xray.exe ناموفق بود.\nفایل xray.exe را دستی کنار برنامه قرار دهید.")
             return False
 
-    def update_config_port(self, port):
-        config_path = os.path.join(os.path.dirname(__file__), CONFIG_FILE)
-        if not os.path.exists(config_path):
-            config_path = CONFIG_FILE
-
-        with open(config_path, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-
-        for inbound in cfg.get("inbounds", []):
-            if inbound.get("tag") == "portal-in":
-                inbound["port"] = int(port)
-
+    def generate_config(self, port):
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cert_path = os.path.join(base_dir, "cert.pem")
+        key_path = os.path.join(base_dir, "key.pem")
+        cfg = {
+            "log": {
+                "loglevel": "warning"
+            },
+            "reverse": {
+                "portals": [
+                    {
+                        "tag": "portal",
+                        "domain": "reverse.local"
+                    }
+                ]
+            },
+            "inbounds": [
+                {
+                    "tag": "socks-in",
+                    "port": 10808,
+                    "listen": "127.0.0.1",
+                    "protocol": "socks",
+                    "settings": {
+                        "auth": "noauth",
+                        "udp": True
+                    },
+                    "sniffing": {
+                        "enabled": True,
+                        "destOverride": ["http", "tls"]
+                    }
+                },
+                {
+                    "tag": "http-in",
+                    "port": 10809,
+                    "listen": "127.0.0.1",
+                    "protocol": "http",
+                    "settings": {}
+                },
+                {
+                    "tag": "portal-in",
+                    "port": int(port),
+                    "listen": "0.0.0.0",
+                    "protocol": "vless",
+                    "settings": {
+                        "clients": [
+                            {
+                                "id": UUID
+                            }
+                        ],
+                        "decryption": "none"
+                    },
+                    "streamSettings": {
+                        "network": "ws",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "certificates": [
+                                {
+                                    "certificateFile": cert_path,
+                                    "keyFile": key_path
+                                }
+                            ]
+                        },
+                        "wsSettings": {
+                            "path": "/api/v3/user/repos",
+                            "headers": {
+                                "Host": "api.github.com"
+                            }
+                        }
+                    }
+                }
+            ],
+            "outbounds": [
+                {
+                    "tag": "direct",
+                    "protocol": "freedom"
+                }
+            ],
+            "routing": {
+                "rules": [
+                    {
+                        "type": "field",
+                        "inboundTag": ["portal-in"],
+                        "outboundTag": "portal"
+                    },
+                    {
+                        "type": "field",
+                        "inboundTag": ["socks-in", "http-in"],
+                        "outboundTag": "portal"
+                    }
+                ]
+            }
+        }
+        config_path = os.path.join(base_dir, CONFIG_FILE)
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2)
+        return config_path
 
     def toggle_service(self):
         if self.process is None:
@@ -201,11 +306,11 @@ class XrayClientGUI(tk.Tk):
             return
 
         try:
-            self.update_config_port(port)
-            self.log(f"پورت {port} ذخیره شد.")
+            cfg_path = self.generate_config(port)
+            self.log(f"کانفیگ پورتال با پورت {port} آماده شد.")
 
             self.process = subprocess.Popen(
-                [os.path.abspath(XRAY_BIN), "run", "-c", CONFIG_FILE],
+                [os.path.abspath(XRAY_BIN), "run", "-c", cfg_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -215,10 +320,21 @@ class XrayClientGUI(tk.Tk):
             self.btn_toggle.config(text="خاموش کردن کلاینت (Stop)")
             self.entry_port.config(state="disabled")
             self.entry_ip.config(state="disabled")
+
             sha = self.get_cert_sha256()
             if sha:
-                self.log(f"اثرانگشت گواهی (Cert SHA256):\n{sha}")
-            self.log(f"پورتال فعال شد. حال در GitHub Actions این IP و پورت را وارد کرده و Run workflow را بزنید.")
+                self.entry_sha.delete(0, "end")
+                self.entry_sha.insert(0, sha)
+
+            self.log("=" * 45)
+            self.log("پورتال با موفقیت فعال شد.")
+            self.log("مقادیر زیر را در GitHub Actions وارد کنید:")
+            self.log(f"• Your Public IP: {ip}")
+            self.log(f"• Your Forwarded Port: {port}")
+            if sha:
+                self.log(f"• Certificate SHA256: {sha}")
+            self.log("سپس دکمه Run workflow را بزنید.")
+            self.log("=" * 45)
 
             threading.Thread(target=self._read_logs, daemon=True).start()
 
