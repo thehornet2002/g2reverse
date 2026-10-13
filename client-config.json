@@ -1,0 +1,88 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "reverse": {
+    "portals": [
+      {
+        "tag": "portal",
+        "domain": "reverse.local"
+      }
+    ]
+  },
+  "inbounds": [
+    {
+      "tag": "socks-in",
+      "port": 10808,
+      "listen": "127.0.0.1",
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      }
+    },
+    {
+      "tag": "http-in",
+      "port": 10809,
+      "listen": "127.0.0.1",
+      "protocol": "http",
+      "settings": {}
+    },
+    {
+      "tag": "portal-in",
+      "port": 8443,
+      "listen": "0.0.0.0",
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "e7b99c43-4dc9-408a-b852-7b5638a16db8"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "certificates": [
+            {
+              "certificateFile": "cert.pem",
+              "keyFile": "key.pem"
+            }
+          ]
+        },
+        "wsSettings": {
+          "path": "/api/v3/user/repos",
+          "headers": {
+            "Host": "api.github.com"
+          }
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom"
+    }
+  ],
+  "routing": {
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["portal-in"],
+        "outboundTag": "portal"
+      },
+      {
+        "type": "field",
+        "inboundTag": ["socks-in", "http-in"],
+        "outboundTag": "portal"
+      }
+    ]
+  }
+}

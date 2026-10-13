@@ -1,0 +1,105 @@
+name: Xray Reverse Bridge (Camouflaged)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_ip:
+        description: 'Your Public IP'
+        required: true
+      target_port:
+        description: 'Your Forwarded Port (default 8443)'
+        required: true
+        default: '8443'
+      duration:
+        description: 'Session Duration (max 6h)'
+        required: false
+        default: '6h'
+
+jobs:
+  run-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Camouflaged Xray Bridge
+        env:
+          TARGET_IP: ${{ github.event.inputs.target_ip }}
+          TARGET_PORT: ${{ github.event.inputs.target_port }}
+        run: |
+          mkdir -p xray
+          cat <<EOF > xray/config.json
+          {
+            "log": {
+              "loglevel": "warning"
+            },
+            "reverse": {
+              "bridges": [
+                {
+                  "tag": "bridge",
+                  "domain": "reverse.local"
+                }
+              ]
+            },
+            "outbounds": [
+              {
+                "tag": "out-to-internet",
+                "protocol": "freedom",
+                "settings": {}
+              },
+              {
+                "tag": "out-to-portal",
+                "protocol": "vless",
+                "settings": {
+                  "vnext": [
+                    {
+                      "address": "$TARGET_IP",
+                      "port": $TARGET_PORT,
+                      "users": [
+                        {
+                          "id": "e7b99c43-4dc9-408a-b852-7b5638a16db8",
+                          "encryption": "none"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "streamSettings": {
+                  "network": "ws",
+                  "security": "tls",
+                  "tlsSettings": {
+                    "serverName": "api.github.com",
+                    "allowInsecure": true
+                  },
+                  "wsSettings": {
+                    "path": "/api/v3/user/repos",
+                    "headers": {
+                      "Host": "api.github.com",
+                      "User-Agent": "GitHub-Hookshot/1.0"
+                    }
+                  }
+                }
+              }
+            ],
+            "routing": {
+              "rules": [
+                {
+                  "type": "field",
+                  "inboundTag": ["bridge"],
+                  "outboundTag": "out-to-internet"
+                },
+                {
+                  "type": "field",
+                  "outboundTag": "out-to-portal"
+                }
+              ]
+            }
+          }
+          EOF
+
+          echo "Starting Camouflaged Bridge inside Docker..."
+          docker run -d --name xray-bridge --network host \
+            -v $(pwd)/xray:/etc/xray \
+            teddysun/xray run -c /etc/xray/config.json
+
+          echo "Bridge initialized towards $TARGET_IP:$TARGET_PORT"
+
+      - name: Keep Alive
+        run: sleep ${{ github.event.inputs.duration || '6h' }}
