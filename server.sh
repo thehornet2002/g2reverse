@@ -6,7 +6,7 @@ PORT=8443
 SOCKS_PORT=10808
 HTTP_PORT=10809
 SNI="api.github.com"
-WS_PATH="/api/v3/user/repos"
+XHTTP_PATH="/api/v3/user/repos"
 UUID="e7b99c43-4dc9-408a-b852-7b5638a16db8"
 XRAY_VER="v26.3.27"
 SERVICE_NAME="g2reverse"
@@ -28,7 +28,7 @@ while [[ $# -gt 0 ]]; do
     --sni)
       SNI="$2"; shift 2 ;;
     --path)
-      WS_PATH="$2"; shift 2 ;;
+      XHTTP_PATH="$2"; shift 2 ;;
     -h|--help)
       echo "Usage: ./server.sh [command] [options]"
       echo ""
@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
       echo "  -s, --socks <port>      Local SOCKS5 proxy port (default: 10808)"
       echo "      --http <port>       Local HTTP proxy port (default: 10809)"
       echo "      --sni <domain>      Camouflage SNI / Host (default: api.github.com)"
-      echo "      --path <path>       WebSocket path (default: /api/v3/user/repos)"
+      echo "      --path <path>       XHTTP path (default: /api/v3/user/repos)"
       exit 0
       ;;
     *)
@@ -152,6 +152,17 @@ cat <<EOF > "$SCRIPT_DIR/config.json"
   "log": {
     "loglevel": "warning"
   },
+  "policy": {
+    "levels": {
+      "0": {
+        "handshake": 4,
+        "connIdle": 300,
+        "uplinkOnly": 2,
+        "downlinkOnly": 5,
+        "bufferSize": 16384
+      }
+    }
+  },
   "reverse": {
     "portals": [
       {
@@ -172,7 +183,8 @@ cat <<EOF > "$SCRIPT_DIR/config.json"
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": ["http", "tls"],
+        "routeOnly": false
       }
     },
     {
@@ -196,7 +208,7 @@ cat <<EOF > "$SCRIPT_DIR/config.json"
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "ws",
+        "network": "xhttp",
         "security": "tls",
         "tlsSettings": {
           "certificates": [
@@ -206,11 +218,9 @@ cat <<EOF > "$SCRIPT_DIR/config.json"
             }
           ]
         },
-        "wsSettings": {
-          "path": "$WS_PATH",
-          "headers": {
-            "Host": "$SNI"
-          }
+        "xhttpSettings": {
+          "path": "$XHTTP_PATH",
+          "host": "$SNI"
         }
       }
     }
@@ -219,10 +229,20 @@ cat <<EOF > "$SCRIPT_DIR/config.json"
     {
       "tag": "direct",
       "protocol": "freedom"
+    },
+    {
+      "tag": "blocked",
+      "protocol": "blackhole"
     }
   ],
   "routing": {
     "rules": [
+      {
+        "type": "field",
+        "port": "443",
+        "network": "udp",
+        "outboundTag": "blocked"
+      },
       {
         "type": "field",
         "inboundTag": ["portal-in"],
@@ -267,7 +287,7 @@ echo "============================================================"
 echo "      g2reverse Service Installed and Running!              "
 echo "============================================================"
 echo "[+] Service:             $SERVICE_NAME (active/running)"
-echo "[+] Portal Inbound:      0.0.0.0:$PORT (VLESS WS+TLS)"
+echo "[+] Portal Inbound:      0.0.0.0:$PORT (VLESS XHTTP+TLS)"
 echo "[+] Local SOCKS5:        0.0.0.0:$SOCKS_PORT"
 echo "[+] Local HTTP:          0.0.0.0:$HTTP_PORT"
 echo "------------------------------------------------------------"
@@ -278,8 +298,8 @@ echo "    • Certificate SHA256:   $CERT_SHA256"
 if [[ "$SNI" != "api.github.com" ]]; then
   echo "    • SNI / Host:           $SNI"
 fi
-if [[ "$WS_PATH" != "/api/v3/user/repos" ]]; then
-  echo "    • WebSocket Path:       $WS_PATH"
+if [[ "$XHTTP_PATH" != "/api/v3/user/repos" ]]; then
+  echo "    • XHTTP Path:           $XHTTP_PATH"
 fi
 echo "============================================================"
 echo "[i] Useful service commands:"

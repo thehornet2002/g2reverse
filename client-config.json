@@ -2,6 +2,17 @@
   "log": {
     "loglevel": "warning"
   },
+  "policy": {
+    "levels": {
+      "0": {
+        "handshake": 4,
+        "connIdle": 300,
+        "uplinkOnly": 2,
+        "downlinkOnly": 5,
+        "bufferSize": 16384
+      }
+    }
+  },
   "reverse": {
     "portals": [
       {
@@ -25,7 +36,8 @@
         "destOverride": [
           "http",
           "tls"
-        ]
+        ],
+        "routeOnly": false
       }
     },
     {
@@ -49,21 +61,19 @@
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "ws",
+        "network": "xhttp",
         "security": "tls",
         "tlsSettings": {
           "certificates": [
             {
-              "certificateFile": "d:\\Projects\\g2reverse\\cert.pem",
-              "keyFile": "d:\\Projects\\g2reverse\\key.pem"
+              "certificateFile": "cert.pem",
+              "keyFile": "key.pem"
             }
           ]
         },
-        "wsSettings": {
+        "xhttpSettings": {
           "path": "/api/v3/user/repos",
-          "headers": {
-            "Host": "api.github.com"
-          }
+          "host": "api.github.com"
         }
       }
     }
@@ -72,10 +82,20 @@
     {
       "tag": "direct",
       "protocol": "freedom"
+    },
+    {
+      "tag": "blocked",
+      "protocol": "blackhole"
     }
   ],
   "routing": {
     "rules": [
+      {
+        "type": "field",
+        "port": "443",
+        "network": "udp",
+        "outboundTag": "blocked"
+      },
       {
         "type": "field",
         "inboundTag": [

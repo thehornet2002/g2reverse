@@ -1,6 +1,6 @@
 # g2reverse
 
-A secure, camouflaged reverse proxy tunnel powered by **Xray-core** (VLESS WebSocket + TLS) and **GitHub Actions**, bypassing network restrictions without requiring a dedicated external VPS.
+A secure, camouflaged reverse proxy tunnel powered by **Xray-core** (VLESS XHTTP + TLS) and **GitHub Actions**, bypassing network restrictions without requiring a dedicated external VPS.
 
 ---
 
@@ -8,7 +8,7 @@ A secure, camouflaged reverse proxy tunnel powered by **Xray-core** (VLESS WebSo
 
 1. **Client / Portal (Your machine or local server):**
    - Runs an Xray Reverse Portal listening on your chosen forwarded port (e.g. `8443`).
-   - Inbound traffic is encapsulated in `VLESS` over `WebSocket + TLS` with domain camouflage (e.g., `api.github.com`).
+   - Inbound traffic is encapsulated in `VLESS` over `XHTTP + TLS` with domain camouflage (e.g., `api.github.com`), avoiding legacy WebSocket fingerprinting.
    - Opens local proxy endpoints for your browser and applications:
      - **SOCKS5:** `127.0.0.1:10808`
      - **HTTP:** `127.0.0.1:10809`
@@ -72,7 +72,7 @@ sudo ./server.sh --port 8443
    - **Your Forwarded Port:** Forwarded port (default `8443`).
    - **Certificate SHA256:** Copied from the client (optional; auto-detected if reachable).
    - **SNI / Host:** Camouflage domain (default `api.github.com`).
-   - **WebSocket Path:** WebSocket endpoint path (default `/api/v3/user/repos`).
+   - **XHTTP Path:** XHTTP endpoint path (default `/api/v3/user/repos`).
    - **Session Duration:** Runner lifetime (up to `6h`).
 4. Click the green **Run workflow** button.
 

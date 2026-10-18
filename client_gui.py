@@ -64,7 +64,7 @@ class XrayClientGUI(tk.Tk):
         self.entry_sni.insert(0, "api.github.com")
         self.entry_sni.grid(row=0, column=1, sticky="w", **pad)
 
-        ttk.Label(frame_camou, text="WS Path:").grid(row=1, column=0, sticky="w", **pad)
+        ttk.Label(frame_camou, text="XHTTP Path:").grid(row=1, column=0, sticky="w", **pad)
         self.entry_path = ttk.Entry(frame_camou, width=30)
         self.entry_path.insert(0, "/api/v3/user/repos")
         self.entry_path.grid(row=1, column=1, sticky="w", **pad)
@@ -229,6 +229,17 @@ class XrayClientGUI(tk.Tk):
             "log": {
                 "loglevel": "warning"
             },
+            "policy": {
+                "levels": {
+                    "0": {
+                        "handshake": 4,
+                        "connIdle": 300,
+                        "uplinkOnly": 2,
+                        "downlinkOnly": 5,
+                        "bufferSize": 16384
+                    }
+                }
+            },
             "reverse": {
                 "portals": [
                     {
@@ -249,7 +260,8 @@ class XrayClientGUI(tk.Tk):
                     },
                     "sniffing": {
                         "enabled": True,
-                        "destOverride": ["http", "tls"]
+                        "destOverride": ["http", "tls"],
+                        "routeOnly": False
                     }
                 },
                 {
@@ -273,7 +285,7 @@ class XrayClientGUI(tk.Tk):
                         "decryption": "none"
                     },
                     "streamSettings": {
-                        "network": "ws",
+                        "network": "xhttp",
                         "security": "tls",
                         "tlsSettings": {
                             "certificates": [
@@ -283,11 +295,9 @@ class XrayClientGUI(tk.Tk):
                                 }
                             ]
                         },
-                        "wsSettings": {
+                        "xhttpSettings": {
                             "path": path,
-                            "headers": {
-                                "Host": sni
-                            }
+                            "host": sni
                         }
                     }
                 }
@@ -296,10 +306,20 @@ class XrayClientGUI(tk.Tk):
                 {
                     "tag": "direct",
                     "protocol": "freedom"
+                },
+                {
+                    "tag": "blocked",
+                    "protocol": "blackhole"
                 }
             ],
             "routing": {
                 "rules": [
+                    {
+                        "type": "field",
+                        "port": "443",
+                        "network": "udp",
+                        "outboundTag": "blocked"
+                    },
                     {
                         "type": "field",
                         "inboundTag": ["portal-in"],
@@ -372,7 +392,7 @@ class XrayClientGUI(tk.Tk):
             if sha:
                 self.log(f"• Certificate SHA256:   {sha}")
             self.log(f"• SNI / Host:           {sni}")
-            self.log(f"• WebSocket Path:       {path}")
+            self.log(f"• XHTTP Path:          {path}")
             self.log("-" * 45)
             self.log("Local Proxies:")
             self.log(f"• SOCKS5: 127.0.0.1:{socks_port}")
